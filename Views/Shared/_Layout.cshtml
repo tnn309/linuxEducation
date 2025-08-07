@@ -1,0 +1,98 @@
+@{
+    var siteName = "Education Activities";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] - @siteName</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <div class="logo">@siteName</div>
+        @if (User.Identity?.IsAuthenticated ?? false)
+        {
+            <div class="user-info">
+                <span>Xin chào, @User.Identity.Name</span>
+                <form asp-controller="Account" asp-action="Logout" method="post">
+                    <button type="submit">Đăng xuất</button>
+                </form>
+            </div>
+        }
+        else
+        {
+            <div class="user-info">
+                <a asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                <a asp-controller="Account" asp-action="Register" style="margin-left: 1rem;">Đăng ký</a>
+            </div>
+        }
+    </header>
+
+    <nav>
+        <ul>
+            <li><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+            <li><a asp-controller="Activity" asp-action="List">Hoạt động</a></li>
+            @if (User.Identity?.IsAuthenticated ?? false)
+            {
+                <li><a asp-controller="Cart" asp-action="Index">Giỏ hàng</a></li>
+                <li><a asp-controller="Registration" asp-action="MyRegistrations">Đăng ký của tôi</a></li>
+                @if (User.IsInRole("Admin"))
+                {
+                    <li><a asp-controller="Admin" asp-action="Dashboard">Quản lý</a></li>
+                }
+            }
+        </ul>
+    </nav>
+
+    <div class="container">
+        <aside class="sidebar">
+            <h3>Danh mục</h3>
+            <ul>
+                <li><a asp-controller="Activity" asp-action="List" asp-route-filter="all">Tất cả</a></li>
+                <li><a asp-controller="Activity" asp-action="List" asp-route-filter="free">Miễn phí</a></li>
+                <li><a asp-controller="Activity" asp-action="List" asp-route-filter="paid">Trả phí</a></li>
+                <li><a asp-controller="Activity" asp-action="List" asp-route-filter="available">Còn chỗ</a></li>
+                @if (User.Identity?.IsAuthenticated ?? false)
+                {
+                    <li><a asp-controller="Activity" asp-action="List" asp-route-filter="registered">Đã đăng ký</a></li>
+                }
+            </ul>
+            
+            @if (User.IsInRole("Admin"))
+            {
+                <h3>Quản trị</h3>
+                <ul>
+                    <li><a asp-controller="Admin" asp-action="Dashboard">Dashboard</a></li>
+                    <li><a asp-controller="Admin" asp-action="Users">Người dùng</a></li>
+                    <li><a asp-controller="Admin" asp-action="Teachers">Giáo viên</a></li>
+                    <li><a asp-controller="Admin" asp-action="ManageRegistrations">Đăng ký</a></li>
+                    <li><a asp-controller="Activity" asp-action="Create">Tạo hoạt động</a></li>
+                </ul>
+            }
+        </aside>
+
+        <main class="main-content">
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success">@TempData["Success"]</div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-error">@TempData["Error"]</div>
+            }
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer>
+        <p>© 2025 @siteName. Email hỗ trợ: tanndh.dev@gmail.com</p>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

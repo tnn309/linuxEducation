@@ -1,0 +1,180 @@
+@model EducationSystem.Models.Activity
+@{
+    ViewData["Title"] = "Tạo hoạt động mới";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h3 class="mb-0"><i class="fas fa-plus"></i> Tạo hoạt động mới</h3>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <!-- Basic Information -->
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label asp-for="Title" class="form-label"></label>
+                            <input asp-for="Title" class="form-control" placeholder="Nhập tiêu đề hoạt động" />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="Type" class="form-label"></label>
+                            <select asp-for="Type" class="form-select" id="typeSelect">
+                                <option value="free">Miễn phí</option>
+                                <option value="paid">Trả phí</option>
+                            </select>
+                            <span asp-validation-for="Type" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="4" placeholder="Mô tả chi tiết về hoạt động"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3" id="priceDiv" style="display: none;">
+                            <label asp-for="Price" class="form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="Price" class="form-control" placeholder="0" />
+                                <span class="input-group-text">VND</span>
+                            </div>
+                            <span asp-validation-for="Price" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="ImageUrl" class="form-label"></label>
+                            <input asp-for="ImageUrl" class="form-control" placeholder="URL hình ảnh (tùy chọn)" />
+                            <span asp-validation-for="ImageUrl" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <!-- Participants & Age -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="MaxParticipants" class="form-label"></label>
+                            <input asp-for="MaxParticipants" class="form-control" />
+                            <span asp-validation-for="MaxParticipants" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="MinAge" class="form-label"></label>
+                            <input asp-for="MinAge" class="form-control" />
+                            <span asp-validation-for="MinAge" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="MaxAge" class="form-label"></label>
+                            <input asp-for="MaxAge" class="form-control" />
+                            <span asp-validation-for="MaxAge" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <!-- Location & Teacher -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Location" class="form-label"></label>
+                            <input asp-for="Location" class="form-control" placeholder="Địa điểm tổ chức" />
+                            <span asp-validation-for="Location" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="TeacherId" class="form-label">Giáo viên</label>
+                            <select asp-for="TeacherId" class="form-select">
+                                <option value="">-- Chọn giáo viên --</option>
+                                @if (ViewBag.Teachers != null)
+                                {
+                                    @foreach (var teacher in ViewBag.Teachers)
+                                    {
+                                        <option value="@teacher.TeacherId">@teacher.FullName</option>
+                                    }
+                                }
+                            </select>
+                            <span asp-validation-for="TeacherId" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <!-- Date & Time -->
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="StartDate" class="form-label"></label>
+                            <input asp-for="StartDate" class="form-control" type="date" />
+                            <span asp-validation-for="StartDate" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="EndDate" class="form-label"></label>
+                            <input asp-for="EndDate" class="form-control" type="date" />
+                            <span asp-validation-for="EndDate" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="StartTime" class="form-label"></label>
+                            <input asp-for="StartTime" class="form-control" type="time" />
+                            <span asp-validation-for="StartTime" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="EndTime" class="form-label"></label>
+                            <input asp-for="EndTime" class="form-control" type="time" />
+                            <span asp-validation-for="EndTime" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <!-- Skills & Requirements -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Skills" class="form-label"></label>
+                            <textarea asp-for="Skills" class="form-control" rows="3" placeholder="Kỹ năng học được từ hoạt động này"></textarea>
+                            <span asp-validation-for="Skills" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Requirements" class="form-label"></label>
+                            <textarea asp-for="Requirements" class="form-control" rows="3" placeholder="Yêu cầu đặc biệt (nếu có)"></textarea>
+                            <span asp-validation-for="Requirements" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="List" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Quay lại
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Tạo hoạt động
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.getElementById('typeSelect').addEventListener('change', function() {
+            const priceDiv = document.getElementById('priceDiv');
+            if (this.value === 'paid') {
+                priceDiv.style.display = 'block';
+            } else {
+                priceDiv.style.display = 'none';
+            }
+        });
+
+        // Set default values and initial display for priceDiv
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="StartDate"]').value = today;
+            document.querySelector('input[name="EndDate"]').value = today;
+            document.querySelector('input[name="StartTime"]').value = '09:00';
+            document.querySelector('input[name="EndTime"]').value = '11:00';
+
+            // Initial display for priceDiv based on default type
+            const typeSelect = document.getElementById('typeSelect');
+            const priceDiv = document.getElementById('priceDiv');
+            if (typeSelect.value === 'paid') {
+                priceDiv.style.display = 'block';
+            } else {
+                priceDiv.style.display = 'none';
+            }
+        });
+    </script>
+}
