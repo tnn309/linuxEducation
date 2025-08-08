@@ -113,3 +113,4 @@
 /home/tnn/Downloads/education-main/obj/Debug/net8.0/EducationSystem.pdb
 /home/tnn/Downloads/education-main/obj/Debug/net8.0/EducationSystem.genruntimeconfig.cache
 /home/tnn/Downloads/education-main/obj/Debug/net8.0/ref/EducationSystem.dll
+/home/tnn/Downloads/education-main/obj/Debug/net8.0/EducationSystem.sourcelink.json
