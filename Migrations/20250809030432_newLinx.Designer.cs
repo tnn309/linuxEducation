@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EducationSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250807165831_linux")]
-    partial class linux
+    [Migration("20250809030432_newLinx")]
+    partial class newLinx
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -1,9 +1,12 @@
 @model Activity
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = Model.Title;
     var isRegistered = ViewBag.IsRegistered as bool? ?? false;
     var hasLiked = ViewBag.HasLiked as bool? ?? false;
-    var canRegisterFree = ViewBag.CanRegisterFree as bool? ?? false; // New ViewBag for free registration
+    var canRegisterFree = ViewBag.CanRegisterFree as bool? ?? false; 
 }
 
 <div class="row">
@@ -116,7 +119,7 @@
                     @if (User.Identity?.IsAuthenticated == true)
                     {
                         <!-- Like Button -->
-                        <button class="btn btn-outline-danger" onclick="toggleLike(@Model.ActivityId)" id="likeBtn">
+                        <button class="btn btn-outline-danger" id="likeBtn" data-activity-id="@Model.ActivityId">
                             <i class="@(hasLiked ? "fas" : "far") fa-heart"></i>
                             <span id="likeCount">@Model.LikesCount</span> Thích
                         </button>
@@ -141,7 +144,7 @@
                         }
                         else
                         {
-                            @if (Model.Type == "free")
+                            @if (Model.Type == "free" && canRegisterFree)
                             {
                                 <!-- Register Button for Free Activities -->
                                 <form asp-action="RegisterFree" method="post" class="d-inline">
@@ -152,7 +155,7 @@
                                     </button>
                                 </form>
                             }
-                            else // Paid activity
+                            else if (Model.Type == "paid")
                             {
                                 <!-- Add to Cart for Paid Activities -->
                                 <form asp-controller="Cart" asp-action="AddToCart" method="post" class="d-inline">
@@ -178,10 +181,11 @@
                 {
                     <div class="mb-4">
                         <h5>Bình luận</h5>
-                        <form onsubmit="submitComment(event, @Model.ActivityId)">
+                        <form id="commentForm" asp-action="Comment" asp-controller="Activity" method="post">
                             @Html.AntiForgeryToken()
+                            <input type="hidden" name="activityId" value="@Model.ActivityId" />
                             <div class="input-group">
-                                <input type="text" class="form-control" placeholder="Viết bình luận..." id="commentInput" required>
+                                <input type="text" class="form-control" name="content" placeholder="Viết bình luận..." required>
                                 <button class="btn btn-outline-primary" type="submit">
                                     <i class="fas fa-paper-plane"></i> Gửi
                                 </button>
@@ -194,12 +198,13 @@
                 <div id="commentsSection">
                     @if (Model.Interactions != null && Model.Interactions.Any(i => i.InteractionType == "Comment"))
                     {
-                        <h6>Bình luận (@Model.CommentsCount)</h6>
+                        <h6>Bình luận (<span id="commentsCount">@Model.CommentsCount</span>)</h6>
                         @foreach (var comment in Model.Interactions.Where(i => i.InteractionType == "Comment").OrderByDescending(i => i.CreatedAt))
                         {
-                            <div class="comment-item border-bottom pb-2 mb-2">
+                            var user = await UserManager.FindByIdAsync(comment.UserId); // Sử dụng UserManager đã inject
+                            <div class="comment-item border-bottom pb-2 mb-2" data-comment-id="@comment.InteractionId">
                                 <div class="d-flex justify-content-between">
-                                    <strong>@(comment.User?.FullName ?? comment.User?.UserName ?? "Người dùng")</strong>
+                                    <strong>@(user?.FullName ?? user?.UserName ?? "Người dùng")</strong>
                                     <small class="text-muted">@comment.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
                                 </div>
                                 <p class="mb-0">@comment.Content</p>
@@ -273,103 +278,101 @@
 </div>
 
 @section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        function toggleLike(activityId) {
-            const token = $('input[name="__RequestVerificationToken"]').val();
-            
-            fetch('@Url.Action("Like", "Activity")', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'RequestVerificationToken': token // Send token in header
-                },
-                body: 'activityId=' + activityId + '&__RequestVerificationToken=' + encodeURIComponent(token) // Send token in body
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Like response:', data); // Thêm dòng này
-                if (data.success) {
-                    document.getElementById('likeCount').textContent = data.likesCount;
-                    document.getElementById('sidebarLikeCount').textContent = data.likesCount;
-                    const heartIcon = document.querySelector('#likeBtn i');
-                    if (data.hasLiked) {
-                        heartIcon.classList.remove('far');
-                        heartIcon.classList.add('fas');
-                    } else {
-                        heartIcon.classList.remove('fas');
-                        heartIcon.classList.add('far');
-                    }
-                } else {
-                    alert(data.message || 'Đã xảy ra lỗi. Vui lòng thử lại.');
+        $(document).ready(function () {
+            // Handle Like
+            $("#likeBtn").on("click", function (e) {
+                e.preventDefault();
+                var activityId = $(this).data("activity-id");
+                if (!activityId) {
+                    alert("Không tìm thấy ID hoạt động.");
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Đã xảy ra lỗi. Vui lòng thử lại.');
-            });
-        }
 
-        function submitComment(event, activityId) {
-            event.preventDefault();
-            const content = document.getElementById('commentInput').value.trim();
-            const token = $('input[name="__RequestVerificationToken"]').val();
-            
-            if (!content) {
-                alert('Vui lòng nhập nội dung bình luận.');
-                return;
-            }
-            
-            fetch('@Url.Action("Comment", "Activity")', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'RequestVerificationToken': token // Send token in header
-                },
-                body: 'activityId=' + activityId + '&content=' + encodeURIComponent(content) + '&__RequestVerificationToken=' + encodeURIComponent(token) // Send token in body
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Comment response:', data); // Thêm dòng này
-                if (data.success) {
-                    // Add new comment to the list
-                    const commentsSection = document.getElementById('commentsSection');
-                    const newComment = `
-                        <div class="comment-item border-bottom pb-2 mb-2">
-                            <div class="d-flex justify-content-between">
-                                <strong>${data.comment.userName}</strong>
-                                <small class="text-muted">${data.comment.createdAt}</small>
-                            </div>
-                            <p class="mb-0">${data.comment.content}</p>
-                        </div>
-                    `;
-                    
-                    // If no comments before, replace the "no comments" message
-                    if (commentsSection.innerHTML.includes('Chưa có bình luận nào')) {
-                        commentsSection.innerHTML = '<h6>Bình luận (1)</h6>' + newComment;
-                    } else {
-                        // Insert after the header
-                        const header = commentsSection.querySelector('h6');
-                        if (header) {
-                            header.insertAdjacentHTML('afterend', newComment);
-                            // Update comment count in header
-                            const currentCount = parseInt(header.textContent.match(/\d+/)[0]) + 1;
-                            header.textContent = `Bình luận (${currentCount})`;
+                $.ajax({
+                    url: '@Url.Action("Like", "Activity")',
+                    type: 'POST',
+                    data: { activityId: activityId },
+                    headers: {
+                        "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        console.log("Like response:", response); // Debug
+                        if (response.success) {
+                            $("#likeCount").text(response.likesCount);
+                            $("#sidebarLikeCount").text(response.likesCount);
+                            const heartIcon = $("#likeBtn i");
+                            if (response.hasLiked) {
+                                heartIcon.removeClass("far").addClass("fas");
+                            } else {
+                                heartIcon.removeClass("fas").addClass("far");
+                            }
+                            alert(response.message);
+                        } else {
+                            alert(response.message || "Đã xảy ra lỗi. Vui lòng thử lại.");
                         }
+                    },
+                    error: function (xhr, status, error) {
+                        console.log("Like error:", error); // Debug
+                        alert("Đã xảy ra lỗi hệ thống. Vui lòng thử lại.");
                     }
-                    
-                    // Update sidebar comment count
-                    document.getElementById('sidebarCommentCount').textContent = data.commentsCount;
-                    
-                    // Clear input
-                    document.getElementById('commentInput').value = '';
-                } else {
-                    alert(data.message || 'Đã xảy ra lỗi. Vui lòng thử lại.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Đã xảy ra lỗi. Vui lòng thử lại.');
+                });
             });
-        }
+
+            // Handle Comment
+            $("#commentForm").on("submit", function (e) {
+                e.preventDefault();
+                var form = $(this);
+                var content = form.find("input[name='content']").val().trim();
+                if (!content) {
+                    alert("Vui lòng nhập nội dung bình luận.");
+                    return;
+                }
+
+                $.ajax({
+                    url: form.attr("action"),
+                    type: 'POST',
+                    data: form.serialize(),
+                    headers: {
+                        "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        console.log("Comment response:", response); // Debug
+                        if (response.success) {
+                            var commentsSection = $("#commentsSection");
+                            var newComment = `
+                                <div class="comment-item border-bottom pb-2 mb-2" data-comment-id="${response.comment.commentId}">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>${response.comment.userName}</strong>
+                                        <small class="text-muted">${response.comment.createdAt}</small>
+                                    </div>
+                                    <p class="mb-0">${response.comment.content}</p>
+                                </div>
+                            `;
+
+                            if (commentsSection.find(".comment-item").length === 0) {
+                                commentsSection.html(`<h6>Bình luận (<span id="commentsCount">${response.commentsCount}</span>)</h6>${newComment}`);
+                            } else {
+                                var header = commentsSection.find("h6");
+                                if (header.length) {
+                                    header.find("#commentsCount").text(response.commentsCount);
+                                    commentsSection.prepend(newComment);
+                                }
+                            }
+                            $("#sidebarCommentCount").text(response.commentsCount);
+                            form.find("input[name='content']").val("");
+                            alert(response.message);
+                        } else {
+                            alert(response.message || "Đã xảy ra lỗi. Vui lòng thử lại.");
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.log("Comment error:", error); // Debug
+                        alert("Đã xảy ra lỗi hệ thống. Vui lòng thử lại.");
+                    }
+                });
+            });
+        });
     </script>
 }

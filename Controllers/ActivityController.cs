@@ -368,6 +368,11 @@ namespace EducationSystem.Controllers
                     return Json(new { success = false, message = "Hoạt động không tồn tại." });
                 }
 
+                if (activity.Status != "Published")
+                {
+                    return Json(new { success = false, message = "Không thể thích hoạt động chưa được công bố hoặc đã đóng." });
+                }
+
                 var existingLike = await _context.Interactions
                     .FirstOrDefaultAsync(i => i.UserId == userId && i.ActivityId == activityId && i.InteractionType == "Like");
 
@@ -399,13 +404,14 @@ namespace EducationSystem.Controllers
                 return Json(new { 
                     success = true, 
                     likesCount = activity.LikesCount,
-                    hasLiked = hasLiked
+                    hasLiked = hasLiked,
+                    message = hasLiked ? "Đã thích hoạt động!" : "Đã bỏ thích hoạt động."
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi thích hoạt động {ActivityId}", activityId);
-                return Json(new { success = false, message = "Đã xảy ra lỗi. Vui lòng thử lại." });
+                _logger.LogError(ex, "Lỗi khi xử lý thích hoạt động {ActivityId}", activityId);
+                return Json(new { success = false, message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau." });
             }
         }
 
@@ -417,6 +423,11 @@ namespace EducationSystem.Controllers
             if (string.IsNullOrWhiteSpace(content))
             {
                 return Json(new { success = false, message = "Nội dung bình luận không được để trống." });
+            }
+
+            if (content.Length > 1000)
+            {
+                return Json(new { success = false, message = "Bình luận không được vượt quá 1000 ký tự." });
             }
 
             try
@@ -433,6 +444,11 @@ namespace EducationSystem.Controllers
                 if (activity == null)
                 {
                     return Json(new { success = false, message = "Hoạt động không tồn tại." });
+                }
+
+                if (activity.Status != "Published")
+                {
+                    return Json(new { success = false, message = "Không thể bình luận trên hoạt động chưa được công bố hoặc đã đóng." });
                 }
 
                 var comment = new Interaction
@@ -456,16 +472,72 @@ namespace EducationSystem.Controllers
                     commentsCount = activity.CommentsCount,
                     comment = new
                     {
+                        commentId = comment.InteractionId, // Thêm ID để hỗ trợ xóa hoặc chỉnh sửa
                         content = comment.Content,
                         userName = user?.FullName ?? user?.UserName ?? "Người dùng",
                         createdAt = comment.CreatedAt.ToString("dd/MM/yyyy HH:mm")
-                    }
+                    },
+                    message = "Bình luận đã được gửi thành công!"
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi bình luận trên hoạt động {ActivityId}", activityId);
-                return Json(new { success = false, message = "Đã xảy ra lỗi. Vui lòng thử lại." });
+                return Json(new { success = false, message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau." });
+            }
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteComment(int commentId)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Json(new { success = false, message = "Vui lòng đăng nhập để xóa bình luận." });
+                }
+
+                var comment = await _context.Interactions
+                    .FirstOrDefaultAsync(i => i.InteractionId == commentId && i.InteractionType == "Comment");
+
+                if (comment == null)
+                {
+                    return Json(new { success = false, message = "Bình luận không tồn tại." });
+                }
+
+                // Chỉ người tạo bình luận hoặc admin có thể xóa
+                var isAdmin = await _userManager.IsInRoleAsync(await _userManager.FindByIdAsync(userId), "Admin");
+                if (comment.UserId != userId && !isAdmin)
+                {
+                    return Json(new { success = false, message = "Bạn không có quyền xóa bình luận này." });
+                }
+
+                var activity = await _context.Activities.FindAsync(comment.ActivityId);
+                if (activity == null)
+                {
+                    return Json(new { success = false, message = "Hoạt động không tồn tại." });
+                }
+
+                _context.Interactions.Remove(comment);
+                activity.CommentsCount = Math.Max(0, activity.CommentsCount - 1);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Người dùng {UserId} đã xóa bình luận {CommentId} trên hoạt động {ActivityId}", userId, commentId, comment.ActivityId);
+
+                return Json(new
+                {
+                    success = true,
+                    commentsCount = activity.CommentsCount,
+                    message = "Bình luận đã được xóa thành công!"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa bình luận {CommentId}", commentId);
+                return Json(new { success = false, message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau." });
             }
         }
     }
